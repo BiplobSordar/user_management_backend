@@ -84,17 +84,17 @@ pipeline {
             }
         }
 
-        stage('Run Backend Container') {
-            steps {
-                sh '''
-                    docker run -d \
-                        --name backend-container \
-                        -p 5000:5000 \
-                        -e NODE_ENV=production \
-                        backend-app
-                '''
-            }
-        }
+      stage('Run Backend Container') {
+    steps {
+        sh '''
+            docker run -d \
+                --name backend-container \
+                --env-file /var/lib/jenkins/config/backend.env \
+                -p 5000:5000 \
+                backend-app
+        '''
+    }
+}
 
         stage('Verify Deployment') {
             steps {
@@ -116,7 +116,28 @@ pipeline {
                     echo ""
                     echo "=========================================="
                     echo "Backend Deployment Successful"
-                    echo "=========================================="
+                    echo "=========================================="stage('Show Backend URL') {
+    steps {
+        sh '''
+            echo ""
+            echo "========================================"
+
+            PUBLIC_IP=$(curl -s http://checkip.amazonaws.com)
+
+            echo "Backend Successfully Deployed"
+
+            echo ""
+            echo "Backend URL"
+            echo "http://$PUBLIC_IP:5000"
+
+            echo ""
+            echo "API Base URL"
+            echo "http://$PUBLIC_IP:5000/api/v1"
+
+            echo "========================================"
+        '''
+    }
+}
                     echo "Container : backend-container"
                     echo "Image     : backend-app"
                     echo "Port      : 5000"
@@ -125,6 +146,29 @@ pipeline {
                 '''
             }
         }
+
+        stage('Show Backend URL') {
+    steps {
+        sh '''
+            echo ""
+            echo "========================================"
+
+            PUBLIC_IP=$(curl -s http://checkip.amazonaws.com)
+
+            echo "Backend Successfully Deployed"
+
+            echo ""
+            echo "Backend URL"
+            echo "http://$PUBLIC_IP:5000"
+
+            echo ""
+            echo "API Base URL"
+            echo "http://$PUBLIC_IP:5000/api/v1"
+
+            echo "========================================"
+        '''
+    }
+}
 
     }
 
