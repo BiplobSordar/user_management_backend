@@ -136,27 +136,32 @@ pipeline {
             }
         }
 
-        stage('Show Backend URL') {
-            steps {
-                script {
+      stage('Show Backend URL') {
+    steps {
+        script {
 
-                    def publicIP = sh(
-                        script: 'curl -s http://169.254.169.254/latest/meta-data/public-ipv4',
-                        returnStdout: true
-                    ).trim()
+            def publicIP = sh(
+                script: '''
+TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" \
+-H "X-aws-ec2-metadata-token-ttl-seconds: 21600" -s)
 
-                    echo ""
-                    echo "=============================================="
-                    echo "Backend Deployment Successful"
-                    echo "=============================================="
-                    echo "Server Public IP : ${publicIP}"
-                    echo "Backend URL      : http://${publicIP}:5000"
-                    echo "API Base URL     : http://${publicIP}:5000/api/v1"
-                    echo "=============================================="
-                }
-            }
+curl -H "X-aws-ec2-metadata-token: $TOKEN" \
+-s http://169.254.169.254/latest/meta-data/public-ipv4
+''',
+                returnStdout: true
+            ).trim()
+
+            echo ""
+            echo "=========================================="
+            echo "Backend Deployment Successful"
+            echo "=========================================="
+            echo "Public IP    : ${publicIP}"
+            echo "Backend URL  : http://${publicIP}:5000"
+            echo "API Base URL : http://${publicIP}:5000/api/v1"
+            echo "=========================================="
         }
-
+    }
+}
         stage('Deployment Summary') {
             steps {
                 sh '''
