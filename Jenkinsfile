@@ -10,9 +10,9 @@ pipeline {
 
         stage('Checkout Source Code') {
             steps {
-                echo "========================================"
+                echo "=========================================="
                 echo "Checking out Backend Source Code..."
-                echo "========================================"
+                echo "=========================================="
 
                 checkout scm
             }
@@ -35,6 +35,10 @@ pipeline {
                     echo ""
                     echo "========== Docker Version =========="
                     docker --version
+
+                    echo ""
+                    echo "========== Docker Information =========="
+                    docker info
                 '''
             }
         }
@@ -43,9 +47,12 @@ pipeline {
             steps {
                 sh '''
                     echo ""
-                    echo "========== Building Backend Image =========="
+                    echo "========== Building Backend Docker Image =========="
 
                     docker build -t backend-app .
+
+                    echo ""
+                    echo "Docker image built successfully."
                 '''
             }
         }
@@ -53,6 +60,9 @@ pipeline {
         stage('Show Docker Images') {
             steps {
                 sh '''
+                    echo ""
+                    echo "========== Docker Images =========="
+
                     docker images
                 '''
             }
@@ -61,11 +71,15 @@ pipeline {
         stage('Stop Existing Container') {
             steps {
                 sh '''
-                    if docker ps --format '{{.Names}}' | grep -w backend-container > /dev/null
+                    echo ""
+                    echo "========== Stopping Existing Container =========="
+
+                    if docker ps --format "{{.Names}}" | grep -w backend-container > /dev/null
                     then
                         docker stop backend-container
+                        echo "Container stopped."
                     else
-                        echo "No running backend container."
+                        echo "No running container found."
                     fi
                 '''
             }
@@ -74,39 +88,72 @@ pipeline {
         stage('Remove Existing Container') {
             steps {
                 sh '''
-                    if docker ps -a --format '{{.Names}}' | grep -w backend-container > /dev/null
+                    echo ""
+                    echo "========== Removing Existing Container =========="
+
+                    if docker ps -a --format "{{.Names}}" | grep -w backend-container > /dev/null
                     then
                         docker rm backend-container
+                        echo "Container removed."
                     else
-                        echo "No backend container found."
+                        echo "No existing container found."
                     fi
                 '''
             }
         }
 
-      stage('Run Backend Container') {
-    steps {
-        sh '''
-            docker run -d \
-                --name backend-container \
-                --env-file /var/lib/jenkins/config/backend.env \
-                -p 5000:5000 \
-                backend-app
-        '''
-    }
-}
+        stage('Run Backend Container') {
+            steps {
+                sh '''
+                    echo ""
+                    echo "========== Starting Backend Container =========="
+
+                    docker run -d \
+                        --name backend-container \
+                        --env-file /var/lib/jenkins/config/backend.env \
+                        -p 5000:5000 \
+                        backend-app
+
+                    echo ""
+                    echo "Backend container started successfully."
+                '''
+            }
+        }
 
         stage('Verify Deployment') {
             steps {
                 sh '''
                     echo ""
                     echo "========== Running Containers =========="
+
                     docker ps
 
                     echo ""
                     echo "========== Backend Logs =========="
+
                     docker logs backend-container || true
                 '''
+            }
+        }
+
+        stage('Show Backend URL') {
+            steps {
+                script {
+
+                    def publicIP = sh(
+                        script: 'curl -s http://169.254.169.254/latest/meta-data/public-ipv4',
+                        returnStdout: true
+                    ).trim()
+
+                    echo ""
+                    echo "=============================================="
+                    echo "Backend Deployment Successful"
+                    echo "=============================================="
+                    echo "Server Public IP : ${publicIP}"
+                    echo "Backend URL      : http://${publicIP}:5000"
+                    echo "API Base URL     : http://${publicIP}:5000/api/v1"
+                    echo "=============================================="
+                }
             }
         }
 
@@ -114,81 +161,48 @@ pipeline {
             steps {
                 sh '''
                     echo ""
-                    echo "=========================================="
-                    echo "Backend Deployment Successful"
-                    echo "=========================================="stage('Show Backend URL') {
-    steps {
-        sh '''
-            echo ""
-            echo "========================================"
-
-            PUBLIC_IP=$(curl -s http://checkip.amazonaws.com)
-
-            echo "Backend Successfully Deployed"
-
-            echo ""
-            echo "Backend URL"
-            echo "http://$PUBLIC_IP:5000"
-
-            echo ""
-            echo "API Base URL"
-            echo "http://$PUBLIC_IP:5000/api/v1"
-
-            echo "========================================"
-        '''
-    }
-}
-                    echo "Container : backend-container"
-                    echo "Image     : backend-app"
-                    echo "Port      : 5000"
-                    echo "NODE_ENV  : production"
-                    echo "=========================================="
+                    echo "=============================================="
+                    echo "Deployment Completed Successfully"
+                    echo "=============================================="
+                    echo "Container Name : backend-container"
+                    echo "Image Name     : backend-app"
+                    echo "Container Port : 5000"
+                    echo "Host Port      : 5000"
+                    echo "Environment    : Production"
+                    echo "=============================================="
                 '''
             }
         }
-
-        stage('Show Backend URL') {
-    steps {
-        sh '''
-            echo ""
-            echo "========================================"
-
-            PUBLIC_IP=$(curl -s http://checkip.amazonaws.com)
-
-            echo "Backend Successfully Deployed"
-
-            echo ""
-            echo "Backend URL"
-            echo "http://$PUBLIC_IP:5000"
-
-            echo ""
-            echo "API Base URL"
-            echo "http://$PUBLIC_IP:5000/api/v1"
-
-            echo "========================================"
-        '''
-    }
-}
 
     }
 
     post {
 
         success {
-            echo "Backend pipeline completed successfully."
+
+            echo "Pipeline executed successfully."
+
         }
 
         failure {
-            echo "Backend pipeline failed."
+
+            echo "Pipeline failed."
 
             sh '''
+                echo ""
+                echo "========== Docker Containers =========="
                 docker ps -a || true
+
+                echo ""
+                echo "========== Docker Images =========="
                 docker images || true
             '''
         }
 
         always {
-            echo "Pipeline finished."
+
+            echo "Pipeline execution finished."
+
         }
     }
 
